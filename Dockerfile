@@ -1,11 +1,13 @@
 # syntax=docker/dockerfile:1
-FROM caddy:2.10.2-builder AS builder
+ARG CADDY_VERSION=2.10.2
+FROM caddy:${CADDY_VERSION}-builder AS builder
 
 RUN xcaddy build \
     --with github.com/caddy-dns/cloudflare \
     --with github.com/WeidiDeng/caddy-cloudflare-ip \
     --with github.com/mholt/caddy-dynamicdns
 
-FROM caddy:2.10.2
+ARG CADDY_VERSION
+FROM caddy:${CADDY_VERSION}
 
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy

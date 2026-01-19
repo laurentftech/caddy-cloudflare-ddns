@@ -21,8 +21,10 @@ jobs:
     steps:
       - name: Get latest Caddy version
         id: caddy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+          VERSION=$(curl -s -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r '.tag_name' | sed 's/^v//')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Latest Caddy version: $VERSION"
 
@@ -51,13 +53,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Update Dockerfile with latest version
-        run: |
-          VERSION="${{ needs.check-version.outputs.caddy_version }}"
-          sed -i "s/caddy:[0-9.]*-builder/caddy:${VERSION}-builder/g" Dockerfile
-          sed -i "s/caddy:[0-9.]*$/caddy:${VERSION}/g" Dockerfile
-          cat Dockerfile
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
@@ -89,5 +84,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            CADDY_VERSION=${{ needs.check-version.outputs.caddy_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
