@@ -5,7 +5,6 @@ Custom Caddy Docker image with Cloudflare modules for DNS challenge and dynamic 
 ## Included Modules
 
 - [caddy-dns/cloudflare](https://github.com/caddy-dns/cloudflare) - DNS challenge for ACME certificates
-- [caddy-cloudflare-ip](https://github.com/WeidiDeng/caddy-cloudflare-ip) - Restore real client IP behind Cloudflare proxy
 - [caddy-dynamicdns](https://github.com/mholt/caddy-dynamicdns) - Dynamic DNS updates
 
 ## Usage
