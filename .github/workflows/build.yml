@@ -101,3 +101,23 @@ jobs:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           cosign sign --yes "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${DIGEST}"
+
+      - name: Notify ntfy (success)
+        if: success()
+        run: |
+          curl -s -H "Title: ✅ Caddy build success" \
+            -H "Priority: default" \
+            -H "Tags: white_check_mark,docker" \
+            -H "Authorization: Bearer ${{ secrets.NTFY_TOKEN }}" \
+            -d "🐳 Caddy ${{ needs.check-version.outputs.caddy_version }} built and pushed to ghcr.io" \
+            "${{ secrets.NTFY_URL }}"
+
+      - name: Notify ntfy (failure)
+        if: failure()
+        run: |
+          curl -s -H "Title: ❌ Caddy build failed" \
+            -H "Priority: high" \
+            -H "Tags: x,docker" \
+            -H "Authorization: Bearer ${{ secrets.NTFY_TOKEN }}" \
+            -d "🔥 Build failed for Caddy ${{ needs.check-version.outputs.caddy_version }}" \
+            "${{ secrets.NTFY_URL }}"
