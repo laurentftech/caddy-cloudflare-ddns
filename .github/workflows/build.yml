@@ -4,8 +4,9 @@ on:
   push:
     branches: [main]
   schedule:
-    # Check for new Caddy version daily at 6:00 UTC
-    - cron: "0 6 * * *"
+    # Recheck several times a day because the official Docker image can lag
+    # behind the GitHub release.
+    - cron: "0 */6 * * *"
   workflow_dispatch:
 
 env:
@@ -20,6 +21,7 @@ jobs:
     outputs:
       caddy_version: ${{ steps.caddy.outputs.version }}
       should_build: ${{ steps.check.outputs.should_build }}
+      base_images_ready: ${{ steps.base-images.outputs.ready }}
     steps:
       - name: Get latest Caddy version
         id: caddy
@@ -44,9 +46,43 @@ jobs:
         env:
           DOCKER_CLI_EXPERIMENTAL: enabled
 
+      - name: Check upstream base image manifests
+        id: base-images
+        env:
+          CADDY_VERSION: ${{ steps.caddy.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          ready=true
+          for image in "caddy:${CADDY_VERSION}-builder" "caddy:${CADDY_VERSION}"; do
+            echo "Checking $image for linux/amd64 and linux/arm64"
+            if ! manifest=$(docker manifest inspect --verbose "$image" 2>/dev/null); then
+              echo "$image is not available yet"
+              ready=false
+              continue
+            fi
+
+            if ! jq -e '
+              [ .[]?.Descriptor.platform
+                | select(.os == "linux")
+                | .architecture
+              ] as $architectures
+              | ($architectures | index("amd64") != null)
+                and ($architectures | index("arm64") != null)
+            ' <<< "$manifest" >/dev/null; then
+              echo "$image does not yet provide both required Linux architectures"
+              ready=false
+            fi
+          done
+
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          if [[ "$ready" != true ]]; then
+            echo "Skipping this build; the scheduled workflow will check again."
+          fi
+
   build:
     needs: check-version
-    if: needs.check-version.outputs.should_build == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: needs.check-version.outputs.base_images_ready == 'true' && (needs.check-version.outputs.should_build == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: read
