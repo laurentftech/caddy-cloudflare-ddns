@@ -8,12 +8,6 @@ on:
     # behind the GitHub release.
     - cron: "0 */6 * * *"
   workflow_dispatch:
-    inputs:
-      test_ntfy:
-        description: "Send an ntfy test notification without building the image"
-        required: false
-        type: boolean
-        default: false
 
 env:
   REGISTRY: ghcr.io
@@ -21,7 +15,6 @@ env:
 
 jobs:
   check-version:
-    if: github.event_name != 'workflow_dispatch' || inputs.test_ntfy != true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -89,7 +82,7 @@ jobs:
 
   build:
     needs: check-version
-    if: needs.check-version.outputs.base_images_ready == 'true' && inputs.test_ntfy != true && (needs.check-version.outputs.should_build == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: needs.check-version.outputs.base_images_ready == 'true' && (needs.check-version.outputs.should_build == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -164,35 +157,3 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.NTFY_TOKEN }}" \
             -d "🔥 Build failed for Caddy ${{ needs.check-version.outputs.caddy_version }} with Cloudflare ddns." \
             "${{ secrets.NTFY_URL }}"
-
-  test-ntfy:
-    if: github.event_name == 'workflow_dispatch' && inputs.test_ntfy == true
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Send test notification
-        env:
-          NTFY_URL: ${{ secrets.NTFY_URL }}
-          NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          if [[ -z "$NTFY_URL" ]]; then
-            echo "NTFY_URL secret is not configured"
-            exit 1
-          fi
-          if [[ -z "$NTFY_TOKEN" ]]; then
-            echo "NTFY_TOKEN secret is not configured"
-            exit 1
-          fi
-
-          curl --fail-with-body --show-error --silent \
-            --connect-timeout 10 --max-time 30 \
-            --write-out '\nHTTP %{http_code}\n' \
-            -H "Title: 🧪 Caddy ntfy test" \
-            -H "Priority: default" \
-            -H "Tags: test,docker" \
-            -H "Authorization: Bearer $NTFY_TOKEN" \
-            -d "Test notification from the Caddy Cloudflare DDNS workflow." \
-            "$NTFY_URL"
