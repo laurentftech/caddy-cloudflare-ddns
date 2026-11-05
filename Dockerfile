@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1
 ARG CADDY_VERSION=2.10.2
-FROM caddy:${CADDY_VERSION}-builder AS builder
+FROM caddy:builder AS builder
 
-RUN xcaddy build \
+ARG CADDY_VERSION
+RUN xcaddy build v${CADDY_VERSION} \
     --with github.com/caddy-dns/cloudflare \
     --with github.com/mholt/caddy-dynamicdns
 

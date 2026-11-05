@@ -54,7 +54,7 @@ jobs:
           set -euo pipefail
 
           ready=true
-          for image in "caddy:${CADDY_VERSION}-builder" "caddy:${CADDY_VERSION}"; do
+          for image in "caddy:builder" "caddy:${CADDY_VERSION}"; do
             echo "Checking $image for linux/amd64 and linux/arm64"
             if ! manifest=$(docker manifest inspect --verbose "$image" 2>/dev/null); then
               echo "$image is not available yet"
